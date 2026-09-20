@@ -50,12 +50,13 @@ const $=(s,r=document)=>r.querySelector(s), UGX=n=>'UGX '+Number(n||0).toLocaleS
 const fmt=d=>d?new Date(d).toLocaleString('en-GB',{dateStyle:'medium',timeStyle:'short'}):'—';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const badge=s=>s?`<span class="badge b-${esc(s)}">${esc(s)}</span>`:'—';
+const API='https://tendoconnect.onrender.com/api';
 let token=localStorage.getItem('tc_token');
 
 function toast(m,err){const t=document.createElement('div');t.className='toast'+(err?' err':'');t.textContent=m;$('#toasts').append(t);setTimeout(()=>t.remove(),4500)}
 async function api(path,{method='GET',body,auth=true}={}){
   let r;
-  try{r=await fetch('/api'+path,{method,headers:{'Content-Type':'application/json',...(auth&&token?{Authorization:'Bearer '+token}:{})},body:body?JSON.stringify(body):undefined})}
+  try{r=await fetch(API+path,{method,headers:{'Content-Type':'application/json',...(auth&&token?{Authorization:'Bearer '+token}:{})},body:body?JSON.stringify(body):undefined})}
   catch{throw new Error('Cannot reach the server. Check your internet connection and try again.')}
   const j=await r.json().catch(()=>({}));
   if(r.status===401&&auth&&token){token=null;localStorage.removeItem('tc_token');route()}
@@ -68,7 +69,7 @@ const shell=(html,narrow)=>{$('#root').innerHTML=html};
 const topbar=`<div class="top"><div class="in"><div class="brand">Tendo<span>Connect</span></div><a href="#/portal">My account</a></div></div>`;
 let buy={};
 async function viewBuy(){
-  shell(topbar+`<div class="wrap"><h1>Get online with TendoConnect</h1><p class="muted">Pick a package, pay, and your access starts automatically.</p><div id="b" class="card"><p class="muted">Loading packages…</p></div></div>`);
+  shell(topbar+`<div class="wrap"><h1>Get online with TendoConnect</h1><p class="muted">Pick a package and pay securely with Mobile Money or card.</p><div id="b" class="card"><p class="muted">Loading packages…</p></div></div>`);
   try{buy.pk=await api('/public/packages',{auth:false})}catch(e){$('#b').innerHTML=`<div class="err">${esc(e.message)}</div>`;return}
   if(!buy.pk.length){$('#b').innerHTML='<div class="empty">No packages are available right now. Please check back soon.</div>';return}
   buy.sel=null;
@@ -78,17 +79,19 @@ async function viewBuy(){
   document.querySelectorAll('.pkg').forEach(b=>b.onclick=()=>{document.querySelectorAll('.pkg').forEach(x=>x.classList.remove('sel'));b.classList.add('sel');buy.sel=+b.dataset.id});
   $('#go').onclick=e=>busy(e.target,async()=>{
     if(!buy.sel)throw new Error('Choose a package first.');
-    buy.order=await api('/orders',{method:'POST',auth:false,body:{phone:$('#ph').value,package_id:buy.sel}});payStep()})}
-function payStep(){const o=buy.order;
-  $('#b').innerHTML=`<h2>${esc(o.package)} — ${UGX(o.amount)}</h2><p class="muted">Receipt code: <b>${esc(o.ref)}</b> (keep this to view your account later)</p>
-  <label for="m">Payment method</label><select id="m"><option>Mobile Money</option><option>Card</option><option>Cash</option><option>Other</option></select>
-  <p class="muted">Demo mode: no real money is charged.</p>
-  <div class="row"><button class="btn" id="ok">Pay (simulate success)</button><button class="btn sec" id="no">Simulate failure</button></div>`;
-  const pay=outcome=>e=>busy(e.target,async()=>{buy.order=await api('/payments/mock',{method:'POST',auth:false,body:{order_ref:o.ref,method:$('#m').value,outcome}});done()});
-  $('#ok').onclick=pay('success');$('#no').onclick=pay('failure')}
-function done(){const o=buy.order,s=o.session;
-  $('#b').innerHTML=o.payment_status==='Completed'&&s?`<h2>You're connected 🎉</h2><dl class="kv"><dt>Package</dt><dd>${esc(o.package)}</dd><dt>Login</dt><dd>${esc(s.mikrotik_username)}</dd><dt>Started</dt><dd>${fmt(s.started_at)}</dd><dt>Expires</dt><dd><b>${fmt(s.expires_at)}</b></dd><dt>Receipt</dt><dd>${esc(o.ref)}</dd></dl><p><a href="#/portal">View my account</a></p>`
-  :`<h2>Payment ${esc(o.payment_status.toLowerCase())}</h2><p class="muted">Your internet access was not activated. Nothing was charged. You can try again.</p><button class="btn" onclick="viewBuy()">Try again</button>`}
+    const o=await api('/orders',{method:'POST',auth:false,body:{phone:$('#ph').value,package_id:buy.sel}});
+    if(!o.redirect_url)throw new Error('Payment could not be started. Please try again.');
+    e.target.textContent='Opening secure payment…';location.href=o.redirect_url})}
+async function viewReceipt(ref){
+  shell(topbar+`<div class="wrap"><div class="card" id="r"><h2>Confirming your payment…</h2><p class="muted">Please keep this page open. This can take up to a minute.</p></div></div>`);
+  for(let i=0;i<45;i++){
+    let o;try{o=await api('/payments/status/'+encodeURIComponent(ref),{auth:false})}catch(e){if(i>2)return $('#r').innerHTML=`<h2>We couldn't check your payment</h2><p class="muted">${esc(e.message)}</p><p>Your receipt code is <b>${esc(ref)}</b>. If money left your account it is applied automatically. Check <a href="#/portal">My account</a> in a few minutes.</p>`}
+    if(o&&o.payment_status!=='Pending')return receipt(o);
+    await new Promise(r=>setTimeout(r,4000));if(!location.hash.includes(ref))return}
+  $('#r').innerHTML=`<h2>Still waiting for confirmation</h2><p class="muted">If you completed payment, your package is activated automatically once the provider confirms it. Receipt code: <b>${esc(ref)}</b>. Check <a href="#/portal">My account</a> shortly.</p>`}
+function receipt(o){const s=o.session;
+  $('#r').innerHTML=o.payment_status==='Completed'&&s?`<h2>Payment received</h2><dl class="kv"><dt>Package</dt><dd>${esc(o.package)}</dd><dt>Paid</dt><dd>${UGX(o.amount)}</dd><dt>Valid until</dt><dd><b>${fmt(s.expires_at)}</b></dd><dt>Receipt code</dt><dd>${esc(o.ref)}</dd></dl><p class="muted">Keep your receipt code. You need it with your phone number to see your account.</p><p><a href="#/portal">View my account</a></p>`
+  :`<h2>Payment ${esc(o.payment_status.toLowerCase())}</h2><p class="muted">Your internet package was not activated. Please try again.</p><a class="btn" href="#/" style="text-decoration:none;display:inline-block">Try again</a>`}
 
 /* ---------- customer portal ---------- */
 function viewPortal(){
@@ -138,8 +141,8 @@ async function dash(){const s=await api('/dashboard/stats');const c=[['Total cus
 async function reports(){const r=await api('/reports'),pc=r.payment_counts,mx=Math.max(1,...Object.values(pc));
   $('#c').innerHTML=`<div class="stats">${[['Revenue today',UGX(r.revenue_today)],['Revenue this week',UGX(r.revenue_week)],['Revenue this month',UGX(r.revenue_month)],['Total revenue',UGX(r.revenue_total)],['Customers',r.customers],['Purchases',r.purchases],['Most purchased package',esc(r.top_package||'—')]].map(x=>`<div class="card"><span class="muted">${x[0]}</span><b>${x[1]}</b></div>`).join('')}</div>
   <div class="card bars" style="margin-top:1rem"><h3>Payments by status</h3>${Object.keys(pc).length?Object.entries(pc).map(([k,v])=>`${badge(k)} ${v}<div style="width:${v/mx*100}%"></div>`).join(''):'<p class="muted">No payments yet.</p>'}</div>`}
-async function settings(){const s=await api('/settings/status');
-  $('#c').innerHTML=`<div class="card"><dl class="kv"><dt>Payment mode</dt><dd>${badge(s.payment_mode==='mock'?'Pending':'Active').replace(/>.*?</,'>'+esc(s.payment_mode)+'<')} (demo payments, no real money)</dd><dt>Pesapal</dt><dd>${s.pesapal_configured?'Keys set':'Keys not set'} — not integrated yet</dd><dt>MikroTik</dt><dd>${s.mikrotik_configured?'Host set':'Host not set'} — not integrated yet (mock hotspot provider in use)</dd></dl></div>`}
+async function settings(){const s=await api('/settings/status'),y=v=>v?'Yes':'No';
+  $('#c').innerHTML=`<div class="card"><dl class="kv"><dt>Pesapal environment</dt><dd>${esc(s.pesapal_environment)}</dd><dt>Credentials accepted</dt><dd>${y(s.pesapal_credentials_ok)}</dd><dt>IPN registered</dt><dd>${y(s.ipn_registered)}</dd><dt>Callback URL</dt><dd>${esc(s.callback_url)}</dd><dt>IPN URL</dt><dd>${esc(s.ipn_url)}</dd><dt>Router access</dt><dd>Not connected: paid sessions are recorded here but the router is not updated automatically.</dd></dl></div>`}
 async function list(){const S=SEC[cur];rows=await api(S.url);
   $('#act').innerHTML=`<input id="q" placeholder="Search…" style="width:200px" aria-label="Search">${S.filter?`<select id="f" style="width:auto" aria-label="Filter"><option value="">All statuses</option>${S.filter.map(x=>`<option>${x}</option>`).join('')}</select>`:''}${S.form?`<button class="btn" id="add">Add ${cur.slice(0,-1).toLowerCase()}</button>`:''}`;
   $('#q').oninput=draw;if(S.filter)$('#f').onchange=draw;if(S.form)$('#add').onclick=()=>edit();draw()}
@@ -165,7 +168,7 @@ async function act(a,r){const S=SEC[cur];
     <h3 style="margin-top:1rem">Statistics</h3><dl class="kv"><dt>Purchases</dt><dd>${c.purchases}</dd><dt>Total spent</dt><dd>${UGX(c.total_spent)}</dd><dt>Current session</dt><dd>${s?esc(s.package)+' until '+fmt(s.expires_at):'None'}</dd><dt>Last payment</dt><dd>${l?UGX(l.amount)+' on '+fmt(l.paid_at):'—'}</dd></dl>
     <h3 style="margin-top:1rem">Transaction history</h3>${c.transactions.length?c.transactions.map(t=>`<div class="row" style="justify-content:space-between;border-top:1px solid var(--line);padding:.4rem 0"><span>${esc(t.package)}<br><small class="muted">${fmt(t.created_at)} · ${esc(t.method)}</small></span><span>${UGX(t.amount)} ${badge(t.status)}</span></div>`).join(''):'<p class="muted">No transactions yet.</p>'}<p><button class="btn sec" id="cl">Close</button></p>`);$('#cl',m).onclick=()=>m.remove()}}
 
-function route(){const h=location.hash;h.startsWith('#/admin')?viewAdmin():h.startsWith('#/portal')?viewPortal():viewBuy()}
+function route(){const h=location.hash;h.startsWith('#/admin')?viewAdmin():h.startsWith('#/portal')?viewPortal():h.startsWith('#/receipt/')?viewReceipt(h.slice(10)):viewBuy()}
 addEventListener('hashchange',route);route();
 </script>
 </body>
