@@ -4,43 +4,63 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>TendoConnect Technologies</title>
+<meta name="theme-color" content="#0a2a2f">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
 <style>
-:root{--ink:#0f2a2e;--teal:#0e8f7e;--tealdk:#0a6f62;--bg:#f3f6f6;--card:#fff;--line:#dbe4e4;--mut:#5d7276;--bad:#b3261e;--warn:#a86a00;--ok:#127a3d}
-*{box-sizing:border-box}body{margin:0;font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink)}
-h1,h2,h3{margin:0 0 .5rem;line-height:1.2}a{color:var(--tealdk)}
-button,input,select,textarea{font:inherit}
-.btn{border:0;border-radius:8px;padding:.6rem 1rem;background:var(--teal);color:#fff;font-weight:600;cursor:pointer}
-.btn:hover{background:var(--tealdk)}.btn.sec{background:#fff;color:var(--ink);border:1px solid var(--line)}.btn.bad{background:var(--bad)}.btn.sm{padding:.25rem .6rem;font-size:13px}.btn:disabled{opacity:.6;cursor:wait}
-:focus-visible{outline:3px solid #f2a900;outline-offset:2px}
-input,select,textarea{width:100%;padding:.6rem .7rem;border:1px solid var(--line);border-radius:8px;background:#fff}
-label{display:block;font-weight:600;margin:.8rem 0 .25rem}
-.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:1.1rem}
-.badge{display:inline-block;padding:.05rem .55rem;border-radius:99px;font-size:12.5px;font-weight:600;background:#e6eeee}
+:root{--ink:#0a2a2f;--ink2:#123d44;--teal:#0f9d8a;--tealdk:#0b7a6b;--sun:#ffb81c;--bg:#f2f5f5;--card:#fff;--line:#e2e9e9;--mut:#5f767a;--bad:#b3261e;--warn:#9a6400;--ok:#0f7a3f}
+*{box-sizing:border-box}
+body{margin:0;font:15px/1.55 Manrope,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+h1,h2,h3{margin:0 0 .5rem;line-height:1.15;letter-spacing:-.02em}h1{font-size:28px;font-weight:800}h2{font-size:21px;font-weight:800}h3{font-size:16px;font-weight:700}
+a{color:var(--tealdk);font-weight:600}button,input,select,textarea{font:inherit}
+.btn{border:0;border-radius:10px;padding:.7rem 1.1rem;background:var(--ink);color:#fff;font-weight:700;cursor:pointer;transition:transform .08s,background .15s}
+.btn:hover{background:var(--ink2)}.btn:active{transform:scale(.98)}
+.btn.sun{background:var(--sun);color:var(--ink);font-size:16px;padding:.9rem 1.1rem}.btn.sun:hover{background:#ffc94d}
+.btn.sec{background:#fff;color:var(--ink);box-shadow:inset 0 0 0 1px var(--line)}.btn.sec:hover{background:#f4f8f8}
+.btn.bad{background:var(--bad)}.btn.sm{padding:.3rem .7rem;font-size:13px;border-radius:8px}.btn:disabled{opacity:.6;cursor:wait}
+:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
+input,select,textarea{width:100%;padding:.75rem .85rem;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink)}
+input:focus,select:focus{border-color:var(--teal);outline:3px solid #0f9d8a26}
+label{display:block;font-weight:700;font-size:14px;margin:1rem 0 .3rem}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:1.3rem}
+.wrap .card,.modal .card{box-shadow:0 12px 32px -16px #0a2a2f40}
+.badge{display:inline-flex;align-items:center;gap:.35rem;padding:.1rem .6rem;border-radius:99px;font-size:12.5px;font-weight:700;background:#e9efef;color:var(--mut)}
+.badge:before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
 .b-Active,.b-Completed,.b-Online,.b-Paid{background:#dff3e6;color:var(--ok)}.b-Pending,.b-Maintenance,.b-Suspended{background:#fdf0d5;color:var(--warn)}
-.b-Failed,.b-Cancelled,.b-Terminated,.b-Offline{background:#fbe3e1;color:var(--bad)}
+.b-Failed,.b-Cancelled,.b-Terminated,.b-Offline,.b-Refunded{background:#fbe3e1;color:var(--bad)}
 .muted{color:var(--mut)}.row{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center}
-.wrap{max-width:560px;margin:0 auto;padding:1rem}
-.top{background:var(--ink);color:#fff;padding:.9rem 1rem}.top .in{max-width:560px;margin:auto;display:flex;justify-content:space-between;align-items:center}.top a{color:#bfe9e2;font-size:14px}
-.brand{font-weight:800;font-size:18px;letter-spacing:.2px}.brand span{color:#4fd6c1}
+.brand{display:flex;align-items:center;gap:.55rem;font-weight:800;font-size:19px;letter-spacing:-.02em}.brand svg{width:28px;height:28px;flex:none}
+.top{background:var(--ink);color:#fff;padding:.9rem 1rem}.top .in{max-width:560px;margin:auto;display:flex;justify-content:space-between;align-items:center}.top a{color:#a9dcd4;font-size:14px;text-decoration:none}
+.hero{background:var(--ink);color:#fff;padding:1.4rem 1rem 5.6rem;position:relative;overflow:hidden}
+.hero:after{content:"";position:absolute;right:-150px;top:-170px;width:480px;height:480px;border-radius:50%;background:repeating-radial-gradient(circle,transparent 0 34px,#ffffff12 34px 36px)}
+.hero .in{max-width:560px;margin:auto;position:relative;z-index:1}.hero h1{font-size:34px;max-width:11ch}.hero p{color:#b7d3cf;margin:.5rem 0 0;max-width:34ch}
+.wrap{max-width:560px;margin:0 auto;padding:1rem}.wrap.up{margin-top:-4.4rem;position:relative;z-index:2}
+.wrap>h1{margin:1rem 0 .8rem}.wrap>.card:first-child{margin-top:1rem}.wrap.up>.card:first-child{margin-top:0}
 .pkgs{display:grid;grid-template-columns:1fr 1fr;gap:.6rem}
-.pkg{border:2px solid var(--line);border-radius:12px;padding:.8rem;background:#fff;cursor:pointer;text-align:left}
-.pkg.sel{border-color:var(--teal);background:#eaf7f4}.pkg b{display:block;font-size:17px}.pkg span{color:var(--tealdk);font-weight:700}
-/* admin */
-.app{display:grid;grid-template-columns:230px 1fr;min-height:100vh}
-.side{background:var(--ink);color:#cfe3e0;padding:1rem .7rem;position:sticky;top:0;height:100vh}
-.side .brand{color:#fff;padding:.3rem .6rem 1rem}.side a{display:block;padding:.55rem .8rem;border-radius:8px;color:#cfe3e0;text-decoration:none;cursor:pointer}
-.side a.on,.side a:hover{background:#1c454b;color:#fff}
-.main{padding:1.2rem;min-width:0}.bar{display:flex;justify-content:space-between;align-items:center;gap:.6rem;flex-wrap:wrap;margin-bottom:1rem}
+.pkg{border:1.5px solid var(--line);border-radius:12px;padding:.9rem .95rem;background:#fff;cursor:pointer;text-align:left;color:var(--ink);transition:border-color .15s,background .15s}
+.pkg:hover{border-color:var(--teal)}.pkg b{display:block;font-size:18px;font-weight:800;letter-spacing:-.02em}.pkg span{display:block;color:var(--mut);font-weight:700;margin-top:.1rem}
+.pkg.sel{background:var(--ink);border-color:var(--ink);color:#fff}.pkg.sel span{color:var(--sun)}
+.app{display:grid;grid-template-columns:240px 1fr;min-height:100vh}
+.side{background:var(--ink);padding:1.1rem .8rem;position:sticky;top:0;height:100vh}.side .brand{color:#fff;padding:.2rem .6rem 1.4rem}
+.side a{display:block;padding:.6rem .8rem;border-radius:10px;color:#b7d3cf;text-decoration:none;cursor:pointer;font-weight:600;margin-bottom:2px;border-left:3px solid transparent}
+.side a:hover{background:#ffffff10;color:#fff}.side a.on{background:#ffffff14;color:#fff;border-left-color:var(--sun)}
+.main{padding:1.6rem;min-width:0}.bar{display:flex;justify-content:space-between;align-items:center;gap:.6rem;flex-wrap:wrap;margin-bottom:1.2rem}.bar h1{margin:0;font-size:26px}
 .menu{display:none}
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:.8rem}.stats .card b{display:block;font-size:24px}
-.tw{overflow-x:auto}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:.55rem .7rem;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}th{font-size:13px;color:var(--mut);background:#f8fbfb}
-.modal{position:fixed;inset:0;background:#0f2a2e99;display:flex;align-items:center;justify-content:center;padding:1rem;z-index:20}.modal .card{width:100%;max-width:520px;max-height:92vh;overflow:auto}
-#toasts{position:fixed;right:1rem;bottom:1rem;z-index:30;display:grid;gap:.5rem}.toast{background:var(--ink);color:#fff;padding:.7rem 1rem;border-radius:8px;max-width:320px}.toast.err{background:var(--bad)}
-.empty,.err{padding:2rem;text-align:center;color:var(--mut)}.err{color:var(--bad)}
-.kv{display:grid;grid-template-columns:auto 1fr;gap:.2rem 1rem}.kv dt{color:var(--mut)}.kv dd{margin:0}
-.bars div{height:10px;background:var(--teal);border-radius:5px;margin:.2rem 0 .6rem}
-@media(max-width:800px){.app{grid-template-columns:1fr}.side{position:fixed;left:-240px;width:230px;z-index:15;transition:left .2s}.side.open{left:0}.menu{display:inline-block}}
-@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.8rem}
+.stats .card{padding:1.1rem 1.2rem}.stats .card span{font-size:13px;font-weight:600}.stats .card b{display:block;font-size:28px;font-weight:800;letter-spacing:-.03em;margin-top:.1rem}
+.stats .card.key{background:var(--ink);border-color:var(--ink)}.stats .card.key span{color:#9fc6c0}.stats .card.key b{color:var(--sun)}
+.tw{overflow-x:auto}.tw.card{padding:0;overflow:auto}
+table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:.7rem .9rem;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+th{font-size:12.5px;font-weight:700;color:var(--mut);background:#f7fafa;position:sticky;top:0}td.row{display:table-cell}td.row .btn{margin-right:.3rem}
+tbody tr:hover td{background:#f9fcfc}tbody tr:last-child td{border-bottom:0}
+.modal{position:fixed;inset:0;background:#0a2a2f88;backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:1rem;z-index:20}
+.modal .card{width:100%;max-width:520px;max-height:92vh;overflow:auto;animation:pop .18s ease-out}@keyframes pop{from{transform:translateY(10px);opacity:0}}
+#toasts{position:fixed;right:1rem;bottom:1rem;z-index:30;display:grid;gap:.5rem}.toast{background:var(--ink);color:#fff;padding:.75rem 1rem;border-radius:10px;max-width:320px;font-weight:600;box-shadow:0 10px 30px -10px #0a2a2f80}.toast.err{background:var(--bad)}
+.empty,.err{padding:2.4rem 1rem;text-align:center;color:var(--mut)}.err{color:var(--bad)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:.35rem 1.2rem}.kv dt{color:var(--mut)}.kv dd{margin:0;font-weight:600}
+.bars div{height:10px;background:var(--teal);border-radius:5px;margin:.2rem 0 .7rem}
+@media(max-width:800px){.app{grid-template-columns:1fr}.side{position:fixed;left:-250px;width:240px;z-index:15;transition:left .2s}.side.open{left:0}.menu{display:inline-block}.main{padding:1rem}.hero h1{font-size:30px}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
 <body>
@@ -66,16 +86,17 @@ const busy=async(btn,fn)=>{btn.disabled=true;try{await fn()}catch(e){toast(e.mes
 const shell=(html,narrow)=>{$('#root').innerHTML=html};
 
 /* ---------- customer purchase ---------- */
-const topbar=`<div class="top"><div class="in"><div class="brand">Tendo<span>Connect</span></div><a href="#/portal">My account</a></div></div>`;
+const LOGO='<svg viewBox="0 0 32 32" fill="none" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M4 12a17 17 0 0 1 24 0" style="stroke:var(--arc,#4fd6c1)"/><path d="M8.5 17a11 11 0 0 1 15 0" style="stroke:var(--arc,#4fd6c1)"/><path d="M12.8 22a5 5 0 0 1 6.4 0" stroke="#ffb81c"/><circle cx="16" cy="26" r="1.6" fill="#ffb81c" stroke="none"/></svg>';
+const topbar=`<div class="top"><div class="in"><div class="brand">${LOGO}TendoConnect</div><a href="#/portal">My account</a></div></div>`;
 let buy={};
 async function viewBuy(){
-  shell(topbar+`<div class="wrap"><h1>Get online with TendoConnect</h1><p class="muted">Pick a package and pay securely with Mobile Money or card.</p><div id="b" class="card"><p class="muted">Loading packages…</p></div></div>`);
+  shell(topbar+`<div class="hero"><div class="in"><h1>Get online in a minute</h1><p>Choose a package, pay with Mobile Money or card, and you're set.</p></div></div><div class="wrap up"><div id="b" class="card"><p class="muted">Loading packages…</p></div></div>`);
   try{buy.pk=await api('/public/packages',{auth:false})}catch(e){$('#b').innerHTML=`<div class="err">${esc(e.message)}</div>`;return}
   if(!buy.pk.length){$('#b').innerHTML='<div class="empty">No packages are available right now. Please check back soon.</div>';return}
   buy.sel=null;
   $('#b').innerHTML=`<label for="ph">Your phone number</label><input id="ph" inputmode="tel" placeholder="0772 123 456" autocomplete="tel">
   <label>Choose your package</label><div class="pkgs">${buy.pk.map(p=>`<button class="pkg" data-id="${p.id}"><b>${esc(p.name)}</b><span>${UGX(p.price)}</span></button>`).join('')}</div>
-  <p><button class="btn" id="go" style="width:100%">Buy now</button></p>`;
+  <p style="margin-bottom:.4rem"><button class="btn sun" id="go" style="width:100%">Buy now</button></p><p class="muted" style="text-align:center;font-size:13px;margin:.5rem 0 0">Secure payment by Pesapal · Mobile Money and cards</p>`;
   document.querySelectorAll('.pkg').forEach(b=>b.onclick=()=>{document.querySelectorAll('.pkg').forEach(x=>x.classList.remove('sel'));b.classList.add('sel');buy.sel=+b.dataset.id});
   $('#go').onclick=e=>busy(e.target,async()=>{
     if(!buy.sel)throw new Error('Choose a package first.');
@@ -122,12 +143,12 @@ const SEC={
 let cur='Dashboard',rows=[];
 function viewAdmin(){
   if(!token)return login();
-  shell(`<div class="app"><nav class="side" id="side"><div class="brand">Tendo<span style="color:#4fd6c1">Connect</span></div>${NAV.map(n=>`<a data-n="${n}">${n}</a>`).join('')}<a id="out" style="margin-top:1rem">Sign out</a></nav><main class="main" id="mn"></main></div>`);
+  shell(`<div class="app"><nav class="side" id="side"><div class="brand">${LOGO}TendoConnect</div>${NAV.map(n=>`<a data-n="${n}">${n}</a>`).join('')}<a id="out" style="margin-top:1rem">Sign out</a></nav><main class="main" id="mn"></main></div>`);
   document.querySelectorAll('[data-n]').forEach(a=>a.onclick=()=>{cur=a.dataset.n;$('#side').classList.remove('open');load()});
   $('#out').onclick=()=>{token=null;localStorage.removeItem('tc_token');route()};load()}
 async function login(){
   let setup=false;try{setup=(await api('/auth/status',{auth:false})).setup_required}catch(e){toast(e.message,true)}
-  shell(`<div class="wrap" style="max-width:400px;margin-top:8vh"><div class="brand" style="font-size:24px;margin-bottom:1rem">Tendo<span style="color:var(--teal)">Connect</span> Admin</div><div class="card"><h2>${setup?'Create the first admin':'Sign in'}</h2>
+  shell(`<div class="wrap" style="max-width:400px;margin-top:8vh"><div class="brand" style="font-size:24px;margin-bottom:1.2rem;--arc:#0f9d8a">${LOGO}TendoConnect Admin</div><div class="card"><h2>${setup?'Create the first admin':'Sign in'}</h2>
   <label for="u">Username</label><input id="u" autocomplete="username"><label for="pw">Password${setup?' (10+ characters)':''}</label><input id="pw" type="password" autocomplete="${setup?'new':'current'}-password">
   ${setup?'<label for="sk">Setup key (your SECRET_KEY)</label><input id="sk" type="password">':''}<p><button class="btn" id="li" style="width:100%">${setup?'Create admin':'Sign in'}</button></p></div></div>`);
   $('#li').onclick=e=>busy(e.target,async()=>{const d=await api(setup?'/auth/setup':'/auth/login',{method:'POST',auth:false,body:{username:$('#u').value,password:$('#pw').value,...(setup?{setup_key:$('#sk').value}:{})}});token=d.token;localStorage.setItem('tc_token',token);viewAdmin()})}
@@ -137,7 +158,7 @@ async function load(){
   $('#mb').onclick=()=>$('#side').classList.toggle('open');
   try{await({Dashboard:dash,Reports:reports,Settings:settings}[cur]||list)()}catch(e){$('#c').innerHTML=`<div class="err">${esc(e.message)}<br><br><button class="btn sec" onclick="load()">Retry</button></div>`}}
 async function dash(){const s=await api('/dashboard/stats');const c=[['Total customers',s.total_customers],['Active customers',s.active_customers],["Today's revenue",UGX(s.revenue_today)],['Total revenue',UGX(s.revenue_total)],['Active sessions',s.active_sessions],['Pending payments',s.pending_payments]];
-  $('#c').innerHTML=`<div class="stats">${c.map(x=>`<div class="card"><span class="muted">${x[0]}</span><b>${x[1]}</b></div>`).join('')}</div>`}
+  $('#c').innerHTML=`<div class="stats">${c.map((x,i)=>`<div class="card${i==2?' key':''}"><span class="muted">${x[0]}</span><b>${x[1]}</b></div>`).join('')}</div>`}
 async function reports(){const r=await api('/reports'),pc=r.payment_counts,mx=Math.max(1,...Object.values(pc));
   $('#c').innerHTML=`<div class="stats">${[['Revenue today',UGX(r.revenue_today)],['Revenue this week',UGX(r.revenue_week)],['Revenue this month',UGX(r.revenue_month)],['Total revenue',UGX(r.revenue_total)],['Customers',r.customers],['Purchases',r.purchases],['Most purchased package',esc(r.top_package||'—')]].map(x=>`<div class="card"><span class="muted">${x[0]}</span><b>${x[1]}</b></div>`).join('')}</div>
   <div class="card bars" style="margin-top:1rem"><h3>Payments by status</h3>${Object.keys(pc).length?Object.entries(pc).map(([k,v])=>`${badge(k)} ${v}<div style="width:${v/mx*100}%"></div>`).join(''):'<p class="muted">No payments yet.</p>'}</div>`}
