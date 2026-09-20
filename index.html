@@ -36,10 +36,17 @@ label{display:block;font-weight:700;font-size:14px;margin:1rem 0 .3rem}
 .hero .in{max-width:560px;margin:auto;position:relative;z-index:1}.hero h1{font-size:34px;max-width:11ch}.hero p{color:#b7d3cf;margin:.5rem 0 0;max-width:34ch}
 .wrap{max-width:560px;margin:0 auto;padding:1rem}.wrap.up{margin-top:-4.4rem;position:relative;z-index:2}
 .wrap>h1{margin:1rem 0 .8rem}.wrap>.card:first-child{margin-top:1rem}.wrap.up>.card:first-child{margin-top:0}
-.pkgs{display:grid;grid-template-columns:1fr 1fr;gap:.6rem}
-.pkg{border:1.5px solid var(--line);border-radius:12px;padding:.9rem .95rem;background:#fff;cursor:pointer;text-align:left;color:var(--ink);transition:border-color .15s,background .15s}
-.pkg:hover{border-color:var(--teal)}.pkg b{display:block;font-size:18px;font-weight:800;letter-spacing:-.02em}.pkg span{display:block;color:var(--mut);font-weight:700;margin-top:.1rem}
-.pkg.sel{background:var(--ink);border-color:var(--ink);color:#fff}.pkg.sel span{color:var(--sun)}
+.pkgs{display:grid;grid-template-columns:1fr 1fr;gap:.7rem}
+.pkg{position:relative;border:1.5px solid var(--line);border-radius:16px;padding:1.1rem 1rem;background:#fff;cursor:pointer;text-align:left;color:var(--ink);transition:transform .15s,box-shadow .15s,border-color .15s}
+.pkg:hover{border-color:var(--teal);transform:translateY(-2px);box-shadow:0 14px 28px -18px #0a2a2f4d}.pkg:active{transform:translateY(0) scale(.98)}
+.pkg .dur{display:block;font-size:11.5px;font-weight:800;color:var(--mut);text-transform:uppercase;letter-spacing:.05em}
+.pkg b{display:block;font-size:21px;font-weight:800;letter-spacing:-.02em;margin-top:.3rem}
+.pkg .px{display:block;color:var(--tealdk);font-weight:800;margin-top:.2rem;font-size:15px}
+.pkg .tag{position:absolute;top:-9px;right:12px;background:var(--sun);color:var(--ink);font-size:10.5px;font-weight:800;padding:.2rem .55rem;border-radius:99px;box-shadow:0 4px 10px -4px #0a2a2f66;text-transform:uppercase;letter-spacing:.03em}
+.voucher{background:linear-gradient(135deg,var(--ink),var(--ink2) 120%);border-radius:16px;padding:1.15rem 1.25rem;color:#fff;margin:1rem 0}
+.voucher .lbl{font-size:11.5px;font-weight:800;color:#9fc6c0;text-transform:uppercase;letter-spacing:.06em}
+.voucher .code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:27px;font-weight:800;letter-spacing:.07em;margin:.35rem 0 .7rem;word-break:break-all}
+.voucher .btn{padding:.55rem .9rem;font-size:13.5px}
 .app{display:grid;grid-template-columns:240px 1fr;min-height:100vh}
 .side{background:var(--ink);padding:1.1rem .8rem;position:sticky;top:0;height:100vh}.side .brand{color:#fff;padding:.2rem .6rem 1.4rem}
 .side a{display:block;padding:.6rem .8rem;border-radius:10px;color:#b7d3cf;text-decoration:none;cursor:pointer;font-weight:600;margin-bottom:2px;border-left:3px solid transparent}
@@ -83,24 +90,40 @@ async function api(path,{method='GET',body,auth=true}={}){
   if(!r.ok){const d=j.detail;throw new Error(Array.isArray(d)?(d[0].msg||'Please check your input.').replace(/^Value error, /,''):d||'Request failed.')}
   return j}
 const busy=async(btn,fn)=>{btn.disabled=true;try{await fn()}catch(e){toast(e.message,true)}finally{btn.disabled=false}};
+async function copyCode(text,btn){
+  if(!text)return;
+  try{
+    if(navigator.clipboard&&window.isSecureContext)await navigator.clipboard.writeText(text);
+    else{const ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.opacity='0';document.body.append(ta);ta.select();document.execCommand('copy');ta.remove()}
+    const t=btn.textContent;btn.textContent='Copied!';setTimeout(()=>{if(btn.isConnected)btn.textContent=t},1600)
+  }catch{toast('Could not copy automatically — please select and copy the code by hand.',true)}}
 const shell=(html,narrow)=>{$('#root').innerHTML=html};
 
 /* ---------- customer purchase ---------- */
 const LOGO='<svg viewBox="0 0 32 32" fill="none" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M4 12a17 17 0 0 1 24 0" style="stroke:var(--arc,#4fd6c1)"/><path d="M8.5 17a11 11 0 0 1 15 0" style="stroke:var(--arc,#4fd6c1)"/><path d="M12.8 22a5 5 0 0 1 6.4 0" stroke="#ffb81c"/><circle cx="16" cy="26" r="1.6" fill="#ffb81c" stroke="none"/></svg>';
 const topbar=`<div class="top"><div class="in"><div class="brand">${LOGO}TendoConnect</div><a href="#/portal">My account</a></div></div>`;
 let buy={};
+const pkgHours=p=>p.duration*(p.duration_unit==='Days'?24:p.duration_unit==='Minutes'?1/60:1);
+const pkgDur=p=>`${p.duration} ${p.duration_unit==='Hours'?'hour':p.duration_unit==='Days'?'day':'minute'}${p.duration>1?'s':''}`;
 async function viewBuy(){
-  shell(topbar+`<div class="hero"><div class="in"><h1>Get online in a minute</h1><p>Choose a package, pay with Mobile Money or card, and you're set.</p></div></div><div class="wrap up"><div id="b" class="card"><p class="muted">Loading packages…</p></div></div>`);
+  shell(topbar+`<div class="hero"><div class="in"><h1>Get online in a minute</h1><p>Pick a package below — you'll enter your phone number on the next step, right before you pay.</p></div></div><div class="wrap up"><div id="b" class="card"><p class="muted">Loading packages…</p></div></div>`);
   try{buy.pk=await api('/public/packages',{auth:false})}catch(e){$('#b').innerHTML=`<div class="err">${esc(e.message)}</div>`;return}
   if(!buy.pk.length){$('#b').innerHTML='<div class="empty">No packages are available right now. Please check back soon.</div>';return}
-  buy.sel=null;
-  $('#b').innerHTML=`<label for="ph">Your phone number</label><input id="ph" inputmode="tel" placeholder="0772 123 456" autocomplete="tel">
-  <label>Choose your package</label><div class="pkgs">${buy.pk.map(p=>`<button class="pkg" data-id="${p.id}"><b>${esc(p.name)}</b><span>${UGX(p.price)}</span></button>`).join('')}</div>
-  <p style="margin-bottom:.4rem"><button class="btn sun" id="go" style="width:100%">Buy now</button></p><p class="muted" style="text-align:center;font-size:13px;margin:.5rem 0 0">Secure payment by Pesapal · Mobile Money and cards</p>`;
-  document.querySelectorAll('.pkg').forEach(b=>b.onclick=()=>{document.querySelectorAll('.pkg').forEach(x=>x.classList.remove('sel'));b.classList.add('sel');buy.sel=+b.dataset.id});
-  $('#go').onclick=e=>busy(e.target,async()=>{
-    if(!buy.sel)throw new Error('Choose a package first.');
-    const o=await api('/orders',{method:'POST',auth:false,body:{phone:$('#ph').value,package_id:buy.sel}});
+  const best=buy.pk.length>1?buy.pk.reduce((a,p)=>pkgHours(p)&&(!a||p.price/pkgHours(p)<a.price/pkgHours(a))?p:a,null):null;
+  $('#b').innerHTML=`<label style="margin-top:0">Choose your package</label><div class="pkgs">${buy.pk.map(p=>`<button class="pkg" data-id="${p.id}">${best&&p.id===best.id?'<span class="tag">Best value</span>':''}<span class="dur">${esc(pkgDur(p))} access</span><b>${esc(p.name)}</b><span class="px">${UGX(p.price)}</span></button>`).join('')}</div>
+  <p class="muted" style="text-align:center;font-size:13px;margin:1rem 0 0">Secure payment by Pesapal · Mobile Money and cards</p>`;
+  document.querySelectorAll('.pkg').forEach(b=>b.onclick=()=>openPay(buy.pk.find(p=>p.id===+b.dataset.id)))}
+function openPay(p){
+  const m=modal(`<h2>${esc(p.name)}</h2><p class="muted" style="margin-top:-.3rem">${UGX(p.price)} · ${esc(pkgDur(p))} of access${p.description?' · '+esc(p.description):''}</p>
+  <label for="ph">Your phone number</label><input id="ph" inputmode="tel" placeholder="0772 123 456" autocomplete="tel">
+  <p class="muted" style="font-size:12.5px;margin:.4rem 0 0">Used for Mobile Money payment and to send your receipt.</p>
+  <p class="row" style="margin-top:1.15rem"><button class="btn sun" id="pay" style="flex:1">Pay ${UGX(p.price)}</button><button class="btn sec" id="pcx">Cancel</button></p>`);
+  $('#pcx',m).onclick=()=>m.remove();
+  setTimeout(()=>$('#ph',m)?.focus(),50);
+  $('#pay',m).onclick=e=>busy(e.target,async()=>{
+    const digits=($('#ph',m).value||'').replace(/\D/g,'');
+    if(digits.length<9||digits.length>15)throw new Error('Enter a valid phone number, e.g. 0772 123 456.');
+    const o=await api('/orders',{method:'POST',auth:false,body:{phone:$('#ph',m).value,package_id:p.id}});
     if(!o.redirect_url)throw new Error('Payment could not be started. Please try again.');
     e.target.textContent='Opening secure payment…';location.href=o.redirect_url})}
 async function viewReceipt(ref){
@@ -111,8 +134,13 @@ async function viewReceipt(ref){
     await new Promise(r=>setTimeout(r,4000));if(!location.hash.includes(ref))return}
   $('#r').innerHTML=`<h2>Still waiting for confirmation</h2><p class="muted">If you completed payment, your package is activated automatically once the provider confirms it. Receipt code: <b>${esc(ref)}</b>. Check <a href="#/portal">My account</a> shortly.</p>`}
 function receipt(o){const s=o.session;
-  $('#r').innerHTML=o.payment_status==='Completed'&&s?`<h2>Payment received</h2><dl class="kv"><dt>Package</dt><dd>${esc(o.package)}</dd><dt>Paid</dt><dd>${UGX(o.amount)}</dd><dt>Valid until</dt><dd><b>${fmt(s.expires_at)}</b></dd><dt>Receipt code</dt><dd>${esc(o.ref)}</dd></dl><p class="muted">Keep your receipt code. You need it with your phone number to see your account.</p><p><a href="#/portal">View my account</a></p>`
-  :`<h2>Payment ${esc(o.payment_status.toLowerCase())}</h2><p class="muted">Your internet package was not activated. Please try again.</p><a class="btn" href="#/" style="text-decoration:none;display:inline-block">Try again</a>`}
+  if(!(o.payment_status==='Completed'&&s)){
+    $('#r').innerHTML=`<h2>Payment ${esc(o.payment_status.toLowerCase())}</h2><p class="muted">Your internet package was not activated. Please try again.</p><a class="btn" href="#/" style="text-decoration:none;display:inline-block">Try again</a>`;return}
+  $('#r').innerHTML=`<h2>You're connected</h2><p class="muted">${esc(o.package)} · ${UGX(o.amount)} paid</p>
+  <div class="voucher"><span class="lbl">Your voucher code</span><div class="code">${esc(s.voucher_code||'—')}</div>${s.voucher_code?'<button class="btn sec" id="cpv">Copy code</button>':''}</div>
+  <dl class="kv"><dt>Valid until</dt><dd><b>${fmt(s.expires_at)}</b></dd><dt>Receipt code</dt><dd>${esc(o.ref)}</dd></dl>
+  <p class="muted">Keep this code safe — it's how you get online, and how you look up your account later with your phone number.</p><p><a href="#/portal">View my account</a></p>`;
+  if(s.voucher_code)$('#cpv').onclick=()=>copyCode(s.voucher_code,$('#cpv'))}
 
 /* ---------- customer portal ---------- */
 function viewPortal(){
@@ -120,8 +148,9 @@ function viewPortal(){
   <label for="pp">Phone number</label><input id="pp" inputmode="tel"><label for="pr">Receipt code</label><input id="pr" placeholder="TC-XXXXXXXXXXXX">
   <p><button class="btn" id="pgo">Show my account</button> <a href="#/">Buy a package</a></p></div></div>`);
   $('#pgo').onclick=e=>busy(e.target,async()=>{const d=await api('/portal/lookup',{method:'POST',auth:false,body:{phone:$('#pp').value,receipt:$('#pr').value}});const s=d.current_session;
-    $('#p').innerHTML=`<h2>Hello, ${esc(d.name)}</h2>${s?`<dl class="kv"><dt>Current package</dt><dd>${esc(s.package)}</dd><dt>Internet expires</dt><dd><b>${fmt(s.expires_at)}</b></dd><dt>Session</dt><dd>${badge(s.status)}</dd></dl>`:'<p class="muted">No active internet package. <a href="#/">Buy one</a></p>'}
-    <h3 style="margin-top:1rem">Purchases &amp; payments</h3>${d.purchases.map(p=>`<div class="row" style="justify-content:space-between;border-top:1px solid var(--line);padding:.5rem 0"><div><b>${esc(p.package)}</b><br><small class="muted">${fmt(p.created_at)} · ${esc(p.method)}</small></div><div style="text-align:right">${UGX(p.amount)}<br>${badge(p.status)}</div></div>`).join('')}`})}
+    $('#p').innerHTML=`<h2>Hello, ${esc(d.name)}</h2>${s?`${s.voucher_code?`<div class="voucher"><span class="lbl">Active voucher</span><div class="code">${esc(s.voucher_code)}</div><button class="btn sec" data-copy="${esc(s.voucher_code)}">Copy code</button></div>`:''}<dl class="kv"><dt>Current package</dt><dd>${esc(s.package)}</dd><dt>Internet expires</dt><dd><b>${fmt(s.expires_at)}</b></dd><dt>Session</dt><dd>${badge(s.status)}</dd></dl>`:'<p class="muted">No active internet package. <a href="#/">Buy one</a></p>'}
+    <h3 style="margin-top:1rem">Purchases &amp; payments</h3>${d.purchases.length?d.purchases.map(p=>`<div style="border-top:1px solid var(--line);padding:.6rem 0"><div class="row" style="justify-content:space-between"><div><b>${esc(p.package)}</b><br><small class="muted">${fmt(p.created_at)} · ${esc(p.method)}</small></div><div style="text-align:right">${UGX(p.amount)}<br>${badge(p.status)}</div></div>${p.voucher_code?`<div class="row" style="margin-top:.4rem;justify-content:space-between;align-items:center"><small class="muted">Voucher <b style="color:var(--ink);letter-spacing:.05em">${esc(p.voucher_code)}</b> · ${badge(p.voucher_status)}</small><button class="btn sm sec" data-copy="${esc(p.voucher_code)}">Copy</button></div>`:''}</div>`).join(''):'<p class="muted">No purchases yet.</p>'}`;
+    document.querySelectorAll('[data-copy]').forEach(b=>b.onclick=()=>copyCode(b.dataset.copy,b))})}
 
 /* ---------- admin ---------- */
 const NAV=['Dashboard','Customers','Packages','Payments','Hotspots','Sessions','Reports','Settings'];
@@ -137,7 +166,7 @@ const SEC={
   extra:r=>r.status==='Pending'?`<button class="btn sm sec" data-act="cash">Confirm cash</button>`:''},
  Hotspots:{url:'/hotspots',filter:['Online','Offline','Maintenance'],cols:[['id','ID'],['name','Name'],['location','Location'],['status','Status',badge],['device_id','Router/device ID'],['created_at','Added',fmt]],
   form:[['name','Name'],['location','Location'],['status','Status',['Online','Offline','Maintenance']],['device_id','Router/device identifier']]},
- Sessions:{url:'/sessions',filter:['Active','Expired','Suspended','Terminated'],cols:[['id','ID'],['customer','Customer'],['package','Package'],['hotspot','Hotspot'],['started_at','Start',fmt],['expires_at','Expiry',fmt],['status','Status',badge],['mikrotik_username','MikroTik user']],
+ Sessions:{url:'/sessions',filter:['Active','Expired','Suspended','Terminated'],cols:[['id','ID'],['customer','Customer'],['package','Package'],['hotspot','Hotspot'],['started_at','Start',fmt],['expires_at','Expiry',fmt],['status','Status',badge],['voucher_code','Voucher'],['mikrotik_username','MikroTik user']],
   extra:r=>r.status==='Active'?`<button class="btn sm sec" data-act="term">Terminate</button>`:''}
 };
 let cur='Dashboard',rows=[];
