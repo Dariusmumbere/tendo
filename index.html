@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TendoConnect Technologies</title>
+<style>
+:root{--ink:#0f2a2e;--teal:#0e8f7e;--tealdk:#0a6f62;--bg:#f3f6f6;--card:#fff;--line:#dbe4e4;--mut:#5d7276;--bad:#b3261e;--warn:#a86a00;--ok:#127a3d}
+*{box-sizing:border-box}body{margin:0;font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+h1,h2,h3{margin:0 0 .5rem;line-height:1.2}a{color:var(--tealdk)}
+button,input,select,textarea{font:inherit}
+.btn{border:0;border-radius:8px;padding:.6rem 1rem;background:var(--teal);color:#fff;font-weight:600;cursor:pointer}
+.btn:hover{background:var(--tealdk)}.btn.sec{background:#fff;color:var(--ink);border:1px solid var(--line)}.btn.bad{background:var(--bad)}.btn.sm{padding:.25rem .6rem;font-size:13px}.btn:disabled{opacity:.6;cursor:wait}
+:focus-visible{outline:3px solid #f2a900;outline-offset:2px}
+input,select,textarea{width:100%;padding:.6rem .7rem;border:1px solid var(--line);border-radius:8px;background:#fff}
+label{display:block;font-weight:600;margin:.8rem 0 .25rem}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:1.1rem}
+.badge{display:inline-block;padding:.05rem .55rem;border-radius:99px;font-size:12.5px;font-weight:600;background:#e6eeee}
+.b-Active,.b-Completed,.b-Online,.b-Paid{background:#dff3e6;color:var(--ok)}.b-Pending,.b-Maintenance,.b-Suspended{background:#fdf0d5;color:var(--warn)}
+.b-Failed,.b-Cancelled,.b-Terminated,.b-Offline{background:#fbe3e1;color:var(--bad)}
+.muted{color:var(--mut)}.row{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center}
+.wrap{max-width:560px;margin:0 auto;padding:1rem}
+.top{background:var(--ink);color:#fff;padding:.9rem 1rem}.top .in{max-width:560px;margin:auto;display:flex;justify-content:space-between;align-items:center}.top a{color:#bfe9e2;font-size:14px}
+.brand{font-weight:800;font-size:18px;letter-spacing:.2px}.brand span{color:#4fd6c1}
+.pkgs{display:grid;grid-template-columns:1fr 1fr;gap:.6rem}
+.pkg{border:2px solid var(--line);border-radius:12px;padding:.8rem;background:#fff;cursor:pointer;text-align:left}
+.pkg.sel{border-color:var(--teal);background:#eaf7f4}.pkg b{display:block;font-size:17px}.pkg span{color:var(--tealdk);font-weight:700}
+/* admin */
+.app{display:grid;grid-template-columns:230px 1fr;min-height:100vh}
+.side{background:var(--ink);color:#cfe3e0;padding:1rem .7rem;position:sticky;top:0;height:100vh}
+.side .brand{color:#fff;padding:.3rem .6rem 1rem}.side a{display:block;padding:.55rem .8rem;border-radius:8px;color:#cfe3e0;text-decoration:none;cursor:pointer}
+.side a.on,.side a:hover{background:#1c454b;color:#fff}
+.main{padding:1.2rem;min-width:0}.bar{display:flex;justify-content:space-between;align-items:center;gap:.6rem;flex-wrap:wrap;margin-bottom:1rem}
+.menu{display:none}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:.8rem}.stats .card b{display:block;font-size:24px}
+.tw{overflow-x:auto}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:.55rem .7rem;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}th{font-size:13px;color:var(--mut);background:#f8fbfb}
+.modal{position:fixed;inset:0;background:#0f2a2e99;display:flex;align-items:center;justify-content:center;padding:1rem;z-index:20}.modal .card{width:100%;max-width:520px;max-height:92vh;overflow:auto}
+#toasts{position:fixed;right:1rem;bottom:1rem;z-index:30;display:grid;gap:.5rem}.toast{background:var(--ink);color:#fff;padding:.7rem 1rem;border-radius:8px;max-width:320px}.toast.err{background:var(--bad)}
+.empty,.err{padding:2rem;text-align:center;color:var(--mut)}.err{color:var(--bad)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:.2rem 1rem}.kv dt{color:var(--mut)}.kv dd{margin:0}
+.bars div{height:10px;background:var(--teal);border-radius:5px;margin:.2rem 0 .6rem}
+@media(max-width:800px){.app{grid-template-columns:1fr}.side{position:fixed;left:-240px;width:230px;z-index:15;transition:left .2s}.side.open{left:0}.menu{display:inline-block}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div id="root"></div><div id="toasts" aria-live="polite"></div>
+<script>
+const $=(s,r=document)=>r.querySelector(s), UGX=n=>'UGX '+Number(n||0).toLocaleString('en-US');
+const fmt=d=>d?new Date(d).toLocaleString('en-GB',{dateStyle:'medium',timeStyle:'short'}):'—';
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const badge=s=>s?`<span class="badge b-${esc(s)}">${esc(s)}</span>`:'—';
+let token=localStorage.getItem('tc_token');
+
+function toast(m,err){const t=document.createElement('div');t.className='toast'+(err?' err':'');t.textContent=m;$('#toasts').append(t);setTimeout(()=>t.remove(),4500)}
+async function api(path,{method='GET',body,auth=true}={}){
+  let r;
+  try{r=await fetch('/api'+path,{method,headers:{'Content-Type':'application/json',...(auth&&token?{Authorization:'Bearer '+token}:{})},body:body?JSON.stringify(body):undefined})}
+  catch{throw new Error('Cannot reach the server. Check your internet connection and try again.')}
+  const j=await r.json().catch(()=>({}));
+  if(r.status===401&&auth&&token){token=null;localStorage.removeItem('tc_token');route()}
+  if(!r.ok){const d=j.detail;throw new Error(Array.isArray(d)?(d[0].msg||'Please check your input.').replace(/^Value error, /,''):d||'Request failed.')}
+  return j}
+const busy=async(btn,fn)=>{btn.disabled=true;try{await fn()}catch(e){toast(e.message,true)}finally{btn.disabled=false}};
+const shell=(html,narrow)=>{$('#root').innerHTML=html};
+
+/* ---------- customer purchase ---------- */
+const topbar=`<div class="top"><div class="in"><div class="brand">Tendo<span>Connect</span></div><a href="#/portal">My account</a></div></div>`;
+let buy={};
+async function viewBuy(){
+  shell(topbar+`<div class="wrap"><h1>Get online with TendoConnect</h1><p class="muted">Pick a package, pay, and your access starts automatically.</p><div id="b" class="card"><p class="muted">Loading packages…</p></div></div>`);
+  try{buy.pk=await api('/public/packages',{auth:false})}catch(e){$('#b').innerHTML=`<div class="err">${esc(e.message)}</div>`;return}
+  if(!buy.pk.length){$('#b').innerHTML='<div class="empty">No packages are available right now. Please check back soon.</div>';return}
+  buy.sel=null;
+  $('#b').innerHTML=`<label for="ph">Your phone number</label><input id="ph" inputmode="tel" placeholder="0772 123 456" autocomplete="tel">
+  <label>Choose your package</label><div class="pkgs">${buy.pk.map(p=>`<button class="pkg" data-id="${p.id}"><b>${esc(p.name)}</b><span>${UGX(p.price)}</span></button>`).join('')}</div>
+  <p><button class="btn" id="go" style="width:100%">Buy now</button></p>`;
+  document.querySelectorAll('.pkg').forEach(b=>b.onclick=()=>{document.querySelectorAll('.pkg').forEach(x=>x.classList.remove('sel'));b.classList.add('sel');buy.sel=+b.dataset.id});
+  $('#go').onclick=e=>busy(e.target,async()=>{
+    if(!buy.sel)throw new Error('Choose a package first.');
+    buy.order=await api('/orders',{method:'POST',auth:false,body:{phone:$('#ph').value,package_id:buy.sel}});payStep()})}
+function payStep(){const o=buy.order;
+  $('#b').innerHTML=`<h2>${esc(o.package)} — ${UGX(o.amount)}</h2><p class="muted">Receipt code: <b>${esc(o.ref)}</b> (keep this to view your account later)</p>
+  <label for="m">Payment method</label><select id="m"><option>Mobile Money</option><option>Card</option><option>Cash</option><option>Other</option></select>
+  <p class="muted">Demo mode: no real money is charged.</p>
+  <div class="row"><button class="btn" id="ok">Pay (simulate success)</button><button class="btn sec" id="no">Simulate failure</button></div>`;
+  const pay=outcome=>e=>busy(e.target,async()=>{buy.order=await api('/payments/mock',{method:'POST',auth:false,body:{order_ref:o.ref,method:$('#m').value,outcome}});done()});
+  $('#ok').onclick=pay('success');$('#no').onclick=pay('failure')}
+function done(){const o=buy.order,s=o.session;
+  $('#b').innerHTML=o.payment_status==='Completed'&&s?`<h2>You're connected 🎉</h2><dl class="kv"><dt>Package</dt><dd>${esc(o.package)}</dd><dt>Login</dt><dd>${esc(s.mikrotik_username)}</dd><dt>Started</dt><dd>${fmt(s.started_at)}</dd><dt>Expires</dt><dd><b>${fmt(s.expires_at)}</b></dd><dt>Receipt</dt><dd>${esc(o.ref)}</dd></dl><p><a href="#/portal">View my account</a></p>`
+  :`<h2>Payment ${esc(o.payment_status.toLowerCase())}</h2><p class="muted">Your internet access was not activated. Nothing was charged. You can try again.</p><button class="btn" onclick="viewBuy()">Try again</button>`}
+
+/* ---------- customer portal ---------- */
+function viewPortal(){
+  shell(topbar+`<div class="wrap"><h1>My account</h1><div class="card" id="p"><p class="muted">Enter your phone number and a receipt code from any of your purchases.</p>
+  <label for="pp">Phone number</label><input id="pp" inputmode="tel"><label for="pr">Receipt code</label><input id="pr" placeholder="TC-XXXXXXXXXXXX">
+  <p><button class="btn" id="pgo">Show my account</button> <a href="#/">Buy a package</a></p></div></div>`);
+  $('#pgo').onclick=e=>busy(e.target,async()=>{const d=await api('/portal/lookup',{method:'POST',auth:false,body:{phone:$('#pp').value,receipt:$('#pr').value}});const s=d.current_session;
+    $('#p').innerHTML=`<h2>Hello, ${esc(d.name)}</h2>${s?`<dl class="kv"><dt>Current package</dt><dd>${esc(s.package)}</dd><dt>Internet expires</dt><dd><b>${fmt(s.expires_at)}</b></dd><dt>Session</dt><dd>${badge(s.status)}</dd></dl>`:'<p class="muted">No active internet package. <a href="#/">Buy one</a></p>'}
+    <h3 style="margin-top:1rem">Purchases &amp; payments</h3>${d.purchases.map(p=>`<div class="row" style="justify-content:space-between;border-top:1px solid var(--line);padding:.5rem 0"><div><b>${esc(p.package)}</b><br><small class="muted">${fmt(p.created_at)} · ${esc(p.method)}</small></div><div style="text-align:right">${UGX(p.amount)}<br>${badge(p.status)}</div></div>`).join('')}`})}
+
+/* ---------- admin ---------- */
+const NAV=['Dashboard','Customers','Packages','Payments','Hotspots','Sessions','Reports','Settings'];
+const ST={Active:0,Inactive:0,Suspended:0};
+const SEC={
+ Customers:{url:'/customers',filter:['Active','Inactive','Suspended'],view:1,del:'Deactivate',
+  cols:[['id','ID'],['full_name','Name'],['phone','Phone'],['email','Email'],['status','Status',badge],['current_package','Package'],['package_expiry','Expiry',fmt],['total_spent','Spent',UGX],['purchases','Purchases'],['created_at','Registered',fmt]],
+  form:[['full_name','Full name'],['phone','Phone number'],['email','Email (optional)','email'],['status','Status',['Active','Inactive','Suspended']]]},
+ Packages:{url:'/packages',del:'Delete',cols:[['id','ID'],['name','Name'],['description','Description'],['price','Price',UGX],['duration','Duration'],['duration_unit','Unit'],['active','Status',v=>badge(v?'Active':'Inactive')],['created_at','Created',fmt]],
+  form:[['name','Name'],['description','Description'],['price','Price (UGX)','number'],['duration','Duration','number'],['duration_unit','Unit',['Minutes','Hours','Days']],['active','Active','check']]},
+ Payments:{url:'/payments',filter:['Pending','Completed','Failed','Cancelled','Refunded'],
+  cols:[['id','ID'],['customer','Customer'],['package','Package'],['amount','Amount',UGX],['currency','Cur.'],['method','Method'],['provider','Provider'],['provider_txn_id','Provider txn'],['order_ref','Order'],['status','Status',badge],['created_at','Date & time',fmt]],
+  extra:r=>r.status==='Pending'?`<button class="btn sm sec" data-act="cash">Confirm cash</button>`:''},
+ Hotspots:{url:'/hotspots',filter:['Online','Offline','Maintenance'],cols:[['id','ID'],['name','Name'],['location','Location'],['status','Status',badge],['device_id','Router/device ID'],['created_at','Added',fmt]],
+  form:[['name','Name'],['location','Location'],['status','Status',['Online','Offline','Maintenance']],['device_id','Router/device identifier']]},
+ Sessions:{url:'/sessions',filter:['Active','Expired','Suspended','Terminated'],cols:[['id','ID'],['customer','Customer'],['package','Package'],['hotspot','Hotspot'],['started_at','Start',fmt],['expires_at','Expiry',fmt],['status','Status',badge],['mikrotik_username','MikroTik user']],
+  extra:r=>r.status==='Active'?`<button class="btn sm sec" data-act="term">Terminate</button>`:''}
+};
+let cur='Dashboard',rows=[];
+function viewAdmin(){
+  if(!token)return login();
+  shell(`<div class="app"><nav class="side" id="side"><div class="brand">Tendo<span style="color:#4fd6c1">Connect</span></div>${NAV.map(n=>`<a data-n="${n}">${n}</a>`).join('')}<a id="out" style="margin-top:1rem">Sign out</a></nav><main class="main" id="mn"></main></div>`);
+  document.querySelectorAll('[data-n]').forEach(a=>a.onclick=()=>{cur=a.dataset.n;$('#side').classList.remove('open');load()});
+  $('#out').onclick=()=>{token=null;localStorage.removeItem('tc_token');route()};load()}
+async function login(){
+  let setup=false;try{setup=(await api('/auth/status',{auth:false})).setup_required}catch(e){toast(e.message,true)}
+  shell(`<div class="wrap" style="max-width:400px;margin-top:8vh"><div class="brand" style="font-size:24px;margin-bottom:1rem">Tendo<span style="color:var(--teal)">Connect</span> Admin</div><div class="card"><h2>${setup?'Create the first admin':'Sign in'}</h2>
+  <label for="u">Username</label><input id="u" autocomplete="username"><label for="pw">Password${setup?' (10+ characters)':''}</label><input id="pw" type="password" autocomplete="${setup?'new':'current'}-password">
+  ${setup?'<label for="sk">Setup key (your SECRET_KEY)</label><input id="sk" type="password">':''}<p><button class="btn" id="li" style="width:100%">${setup?'Create admin':'Sign in'}</button></p></div></div>`);
+  $('#li').onclick=e=>busy(e.target,async()=>{const d=await api(setup?'/auth/setup':'/auth/login',{method:'POST',auth:false,body:{username:$('#u').value,password:$('#pw').value,...(setup?{setup_key:$('#sk').value}:{})}});token=d.token;localStorage.setItem('tc_token',token);viewAdmin()})}
+async function load(){
+  document.querySelectorAll('[data-n]').forEach(a=>a.classList.toggle('on',a.dataset.n===cur));
+  const m=$('#mn');m.innerHTML=`<div class="bar"><div class="row"><button class="btn sec menu" id="mb" aria-label="Menu">☰</button><h1>${cur}</h1></div><div id="act" class="row"></div></div><div id="c"><p class="muted">Loading…</p></div>`;
+  $('#mb').onclick=()=>$('#side').classList.toggle('open');
+  try{await({Dashboard:dash,Reports:reports,Settings:settings}[cur]||list)()}catch(e){$('#c').innerHTML=`<div class="err">${esc(e.message)}<br><br><button class="btn sec" onclick="load()">Retry</button></div>`}}
+async function dash(){const s=await api('/dashboard/stats');const c=[['Total customers',s.total_customers],['Active customers',s.active_customers],["Today's revenue",UGX(s.revenue_today)],['Total revenue',UGX(s.revenue_total)],['Active sessions',s.active_sessions],['Pending payments',s.pending_payments]];
+  $('#c').innerHTML=`<div class="stats">${c.map(x=>`<div class="card"><span class="muted">${x[0]}</span><b>${x[1]}</b></div>`).join('')}</div>`}
+async function reports(){const r=await api('/reports'),pc=r.payment_counts,mx=Math.max(1,...Object.values(pc));
+  $('#c').innerHTML=`<div class="stats">${[['Revenue today',UGX(r.revenue_today)],['Revenue this week',UGX(r.revenue_week)],['Revenue this month',UGX(r.revenue_month)],['Total revenue',UGX(r.revenue_total)],['Customers',r.customers],['Purchases',r.purchases],['Most purchased package',esc(r.top_package||'—')]].map(x=>`<div class="card"><span class="muted">${x[0]}</span><b>${x[1]}</b></div>`).join('')}</div>
+  <div class="card bars" style="margin-top:1rem"><h3>Payments by status</h3>${Object.keys(pc).length?Object.entries(pc).map(([k,v])=>`${badge(k)} ${v}<div style="width:${v/mx*100}%"></div>`).join(''):'<p class="muted">No payments yet.</p>'}</div>`}
+async function settings(){const s=await api('/settings/status');
+  $('#c').innerHTML=`<div class="card"><dl class="kv"><dt>Payment mode</dt><dd>${badge(s.payment_mode==='mock'?'Pending':'Active').replace(/>.*?</,'>'+esc(s.payment_mode)+'<')} (demo payments, no real money)</dd><dt>Pesapal</dt><dd>${s.pesapal_configured?'Keys set':'Keys not set'} — not integrated yet</dd><dt>MikroTik</dt><dd>${s.mikrotik_configured?'Host set':'Host not set'} — not integrated yet (mock hotspot provider in use)</dd></dl></div>`}
+async function list(){const S=SEC[cur];rows=await api(S.url);
+  $('#act').innerHTML=`<input id="q" placeholder="Search…" style="width:200px" aria-label="Search">${S.filter?`<select id="f" style="width:auto" aria-label="Filter"><option value="">All statuses</option>${S.filter.map(x=>`<option>${x}</option>`).join('')}</select>`:''}${S.form?`<button class="btn" id="add">Add ${cur.slice(0,-1).toLowerCase()}</button>`:''}`;
+  $('#q').oninput=draw;if(S.filter)$('#f').onchange=draw;if(S.form)$('#add').onclick=()=>edit();draw()}
+function draw(){const S=SEC[cur],q=($('#q')?.value||'').toLowerCase(),f=$('#f')?.value||'';
+  const v=rows.filter(r=>(!f||r.status===f)&&(!q||JSON.stringify(Object.values(r)).toLowerCase().includes(q)));
+  if(!v.length){$('#c').innerHTML=`<div class="card empty">${rows.length?'No results match your search.':'Nothing here yet.'+(S.form?' Use the Add button to create the first one.':'')}</div>`;return}
+  $('#c').innerHTML=`<div class="card tw" style="padding:0"><table><thead><tr>${S.cols.map(c=>`<th>${c[1]}</th>`).join('')}<th></th></tr></thead><tbody>${v.map(r=>`<tr data-id="${r.id}">${S.cols.map(c=>`<td>${c[2]?c[2](r[c[0]]):esc(r[c[0]]??'—')}</td>`).join('')}<td class="row">${S.view?'<button class="btn sm sec" data-act="view">View</button>':''}${S.form?'<button class="btn sm sec" data-act="edit">Edit</button>':''}${S.del?`<button class="btn sm sec" data-act="del">${S.del}</button>`:''}${S.extra?S.extra(r):''}</td></tr>`).join('')}</tbody></table></div>`;
+  document.querySelectorAll('[data-act]').forEach(b=>b.onclick=()=>act(b.dataset.act,rows.find(r=>r.id==b.closest('tr').dataset.id)))}
+function modal(html){const m=document.createElement('div');m.className='modal';m.innerHTML=`<div class="card" role="dialog" aria-modal="true">${html}</div>`;m.onclick=e=>{if(e.target===m)m.remove()};document.body.append(m);return m}
+function confirmBox(text,label,fn){const m=modal(`<p>${esc(text)}</p><div class="row"><button class="btn bad" id="y">${label}</button><button class="btn sec" id="n">Cancel</button></div>`);$('#n',m).onclick=()=>m.remove();$('#y',m).onclick=e=>busy(e.target,async()=>{await fn();m.remove()})}
+function edit(r){const S=SEC[cur],id=r?.id;
+  const m=modal(`<h2>${id?'Edit':'Add'} ${cur.slice(0,-1).toLowerCase()}</h2>${S.form.map(([k,l,t])=>t==='check'?`<label><input type="checkbox" id="f_${k}" style="width:auto" ${!r||r[k]?'checked':''}> ${l}</label>`:Array.isArray(t)?`<label>${l}</label><select id="f_${k}">${t.map(o=>`<option ${r?.[k]===o?'selected':''}>${o}</option>`).join('')}</select>`:`<label>${l}</label><input id="f_${k}" type="${t||'text'}" value="${esc(r?.[k]??'')}">`).join('')}<p class="row"><button class="btn" id="sv">Save</button><button class="btn sec" id="cx">Cancel</button></p>`);
+  $('#cx',m).onclick=()=>m.remove();
+  $('#sv',m).onclick=e=>busy(e.target,async()=>{const b={};S.form.forEach(([k,,t])=>{const el=$('#f_'+k,m);b[k]=t==='check'?el.checked:t==='number'?+el.value:el.value});
+    await api(S.url+(id?'/'+id:''),{method:id?'PUT':'POST',body:b});m.remove();toast('Saved.');list()})}
+async function act(a,r){const S=SEC[cur];
+  if(a==='edit')return edit(r);
+  if(a==='del')return confirmBox(`${S.del} "${r.full_name||r.name}"?`,S.del,async()=>{const d=await api(S.url+'/'+r.id,{method:'DELETE'});toast(d.deactivated?'Package is in use, so it was deactivated instead.':'Done.');list()});
+  if(a==='cash')return confirmBox(`Confirm cash received for order ${r.order_ref}? This activates the customer's package.`,'Confirm',async()=>{await api('/payments/'+r.id+'/confirm-cash',{method:'POST'});toast('Payment confirmed and session created.');list()});
+  if(a==='term')return confirmBox('Terminate this session? The customer loses access immediately.','Terminate',async()=>{await api('/sessions/'+r.id+'/terminate',{method:'POST'});toast('Session terminated.');list()});
+  if(a==='view'){const c=await api('/customers/'+r.id).catch(e=>toast(e.message,true));if(!c)return;const s=c.current_session,l=c.last_payment;
+    const m=modal(`<h2>${esc(c.full_name)} ${badge(c.status)}</h2><h3>Profile</h3><dl class="kv"><dt>Phone</dt><dd>${esc(c.phone)}</dd><dt>Email</dt><dd>${esc(c.email||'—')}</dd><dt>Registered</dt><dd>${fmt(c.created_at)}</dd><dt>Package</dt><dd>${esc(c.current_package||'—')}</dd><dt>Expiry</dt><dd>${fmt(c.package_expiry)}</dd></dl>
+    <h3 style="margin-top:1rem">Statistics</h3><dl class="kv"><dt>Purchases</dt><dd>${c.purchases}</dd><dt>Total spent</dt><dd>${UGX(c.total_spent)}</dd><dt>Current session</dt><dd>${s?esc(s.package)+' until '+fmt(s.expires_at):'None'}</dd><dt>Last payment</dt><dd>${l?UGX(l.amount)+' on '+fmt(l.paid_at):'—'}</dd></dl>
+    <h3 style="margin-top:1rem">Transaction history</h3>${c.transactions.length?c.transactions.map(t=>`<div class="row" style="justify-content:space-between;border-top:1px solid var(--line);padding:.4rem 0"><span>${esc(t.package)}<br><small class="muted">${fmt(t.created_at)} · ${esc(t.method)}</small></span><span>${UGX(t.amount)} ${badge(t.status)}</span></div>`).join(''):'<p class="muted">No transactions yet.</p>'}<p><button class="btn sec" id="cl">Close</button></p>`);$('#cl',m).onclick=()=>m.remove()}}
+
+function route(){const h=location.hash;h.startsWith('#/admin')?viewAdmin():h.startsWith('#/portal')?viewPortal():viewBuy()}
+addEventListener('hashchange',route);route();
+</script>
+</body>
+</html>
