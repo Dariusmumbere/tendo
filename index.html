@@ -27,7 +27,10 @@ label{display:block;font-weight:700;font-size:14px;margin:1rem 0 .3rem}
 .badge{display:inline-flex;align-items:center;gap:.35rem;padding:.1rem .6rem;border-radius:99px;font-size:12.5px;font-weight:700;background:#e9efef;color:var(--mut)}
 .badge:before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
 .b-Active,.b-Completed,.b-Online,.b-Paid{background:#dff3e6;color:var(--ok)}.b-Pending,.b-Maintenance,.b-Suspended{background:#fdf0d5;color:var(--warn)}
-.b-Failed,.b-Cancelled,.b-Terminated,.b-Offline,.b-Refunded{background:#fbe3e1;color:var(--bad)}
+.b-Failed,.b-Cancelled,.b-Terminated,.b-Offline,.b-Refunded,.b-Rejected{background:#fbe3e1;color:var(--bad)}
+.b-SuperAdmin{background:#fff2d6;color:var(--warn)}
+.navbadge{display:inline-flex;min-width:18px;height:18px;padding:0 5px;margin-left:6px;border-radius:99px;background:var(--sun);color:var(--ink);font-size:11px;font-weight:800;align-items:center;justify-content:center;vertical-align:middle}
+.navbadge:empty{display:none}
 .muted{color:var(--mut)}.row{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center}
 .brand{display:flex;align-items:center;gap:.55rem;font-weight:800;font-size:19px;letter-spacing:-.02em}.brand svg{width:28px;height:28px;flex:none}
 .top{background:var(--ink);color:#fff;padding:.9rem 1rem}.top .in{max-width:560px;margin:auto;display:flex;justify-content:space-between;align-items:center}.top a{color:#a9dcd4;font-size:14px;text-decoration:none}
@@ -88,6 +91,7 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const badge=s=>s?`<span class="badge b-${esc(s)}">${esc(s)}</span>`:'—';
 const API='https://tendoconnect.onrender.com/api';
 let token=localStorage.getItem('tc_token');
+let role=localStorage.getItem('tc_role')||'';
 
 function toast(m,err){const t=document.createElement('div');t.className='toast'+(err?' err':'');t.setAttribute('role','alert');t.innerHTML=(err?'⚠ ':'')+esc(m);t.onclick=()=>t.remove();$('#toasts').append(t);setTimeout(()=>t.remove(),err?6500:4000)}
 function errBox(box,msg){let el=typeof box==='string'?$(box):box;if(!el)return toast(msg,true);if(el.classList.contains('modal'))el=el.querySelector('.card')||el;let e=el.querySelector(':scope > .err');if(!e){e=document.createElement('div');e.setAttribute('role','alert');el.prepend(e)}e.className='err shake';e.textContent=msg;setTimeout(()=>e.classList.remove('shake'),320);e.scrollIntoView({block:'nearest',behavior:'smooth'})}
@@ -165,9 +169,16 @@ function viewPortal(){
     document.querySelectorAll('[data-copy]').forEach(b=>b.onclick=()=>copyCode(b.dataset.copy,b))},$('#p'))}
 
 /* ---------- admin ---------- */
-const NAV=['Dashboard','Customers','Packages','Payments','Hotspots','Sessions','Reports','Settings'];
+const NAV=['Dashboard','Customers','Packages','Payments','Hotspots','Sessions','Withdrawals','Reports','Settings'];
 const ST={Active:0,Inactive:0,Suspended:0};
 const SEC={
+ Withdrawals:{url:'/withdrawals',balance:'/withdrawals/balance',filter:['Pending','Paid','Rejected'],addOnly:1,
+  cols:[['id','ID'],['admin_username','Requested by'],['amount','Amount',UGX],['method','Method'],['destination','Destination'],['notes','Notes'],['status','Status',badge],['requested_at','Requested',fmt],['processed_by','Processed by'],['processed_at','Processed',fmt],['reject_reason','Reason']],
+  form:[['amount','Amount (UGX)','number'],['method','Method',['Mobile Money','Bank Transfer','Cash']],['destination','Destination (phone or account)'],['notes','Notes (optional)']],
+  extra:r=>role==='SuperAdmin'&&r.status==='Pending'?`<button class="btn sm sec" data-act="wapprove">Approve &amp; disburse</button><button class="btn sm bad" data-act="wreject">Reject</button>`:''},
+ Admins:{url:'/admins',del:'Delete',
+  cols:[['id','ID'],['username','Username'],['role','Role',badge],['active','Status',v=>badge(v?'Active':'Inactive')],['created_at','Created',fmt]],
+  form:[['username','Username'],['password','Password (leave blank to keep current)','password'],['role','Role',['Admin','SuperAdmin']],['active','Active','check']]},
  Customers:{url:'/customers',filter:['Active','Inactive','Suspended'],view:1,del:'Deactivate',
   cols:[['id','ID'],['full_name','Name'],['phone','Phone'],['email','Email'],['status','Status',badge],['current_package','Package'],['package_expiry','Expiry',fmt],['total_spent','Spent',UGX],['purchases','Purchases'],['created_at','Registered',fmt]],
   form:[['full_name','Full name'],['phone','Phone number'],['email','Email (optional)','email'],['status','Status',['Active','Inactive','Suspended']]]},
@@ -181,38 +192,49 @@ const SEC={
  Sessions:{url:'/sessions',filter:['Active','Expired','Suspended','Terminated'],cols:[['id','ID'],['customer','Customer'],['package','Package'],['hotspot','Hotspot'],['started_at','Start',fmt],['expires_at','Expiry',fmt],['status','Status',badge],['voucher_code','Voucher'],['mikrotik_username','MikroTik user']],
   extra:r=>r.status==='Active'?`<button class="btn sm sec" data-act="term">Terminate</button>`:''}
 };
-let cur='Dashboard',rows=[];
+let cur='Dashboard',rows=[],badgeTimer=null;
+async function refreshBadge(){
+  if(role!=='SuperAdmin')return;
+  try{const d=await api('/withdrawals/pending-count');const b=$('#wbadge');if(b)b.textContent=d.count>0?String(d.count):''}catch{}}
 function viewAdmin(){
   if(!token)return login();
-  shell(`<div class="app"><nav class="side" id="side"><div class="brand">${LOGO}TendoConnect</div>${NAV.map(n=>`<a data-n="${n}">${n}</a>`).join('')}<a id="out" style="margin-top:1rem">Sign out</a></nav><div class="side-ov" id="sideov"></div><main class="main" id="mn"></main></div>`);
+  clearInterval(badgeTimer);
+  const items=[...NAV,...(role==='SuperAdmin'?['Admins']:[])];
+  shell(`<div class="app"><nav class="side" id="side"><div class="brand">${LOGO}TendoConnect</div><div class="muted" style="padding:0 .8rem 1rem;font-size:12px">${role==='SuperAdmin'?'Super admin':'Admin'}</div>${items.map(n=>`<a data-n="${n}">${n}${n==='Withdrawals'?' <span id="wbadge" class="navbadge"></span>':''}</a>`).join('')}<a id="out" style="margin-top:1rem">Sign out</a></nav><div class="side-ov" id="sideov"></div><main class="main" id="mn"></main></div>`);
   document.querySelectorAll('[data-n]').forEach(a=>a.onclick=()=>{cur=a.dataset.n;toggleSide(false);load()});
   $('#sideov').onclick=()=>toggleSide(false);
-  $('#out').onclick=()=>{token=null;localStorage.removeItem('tc_token');route()};load()}
+  $('#out').onclick=()=>{clearInterval(badgeTimer);token=null;role='';localStorage.removeItem('tc_token');localStorage.removeItem('tc_role');route()};
+  refreshBadge();badgeTimer=setInterval(refreshBadge,30000);load()}
 async function login(){
   let setup=false;try{setup=(await api('/auth/status',{auth:false})).setup_required}catch(e){toast(e.message,true)}
   shell(`<div class="wrap" style="max-width:400px;margin-top:8vh"><div class="brand" style="font-size:24px;margin-bottom:1.2rem;--arc:#0f9d8a">${LOGO}TendoConnect Admin</div><div class="card"><h2>${setup?'Create the first admin':'Sign in'}</h2>
   <label for="u">Username</label><input id="u" autocomplete="username"><label for="pw">Password${setup?' (10+ characters)':''}</label><input id="pw" type="password" autocomplete="${setup?'new':'current'}-password">
   ${setup?'<label for="sk">Setup key (your SECRET_KEY)</label><input id="sk" type="password">':''}<p><button class="btn" id="li" style="width:100%">${setup?'Create admin':'Sign in'}</button></p></div></div>`);
-  $('#li').onclick=e=>busy(e.target,async()=>{const d=await api(setup?'/auth/setup':'/auth/login',{method:'POST',auth:false,body:{username:$('#u').value,password:$('#pw').value,...(setup?{setup_key:$('#sk').value}:{})}});token=d.token;localStorage.setItem('tc_token',token);viewAdmin()},e.target.closest('.card'))}
+  $('#li').onclick=e=>busy(e.target,async()=>{const d=await api(setup?'/auth/setup':'/auth/login',{method:'POST',auth:false,body:{username:$('#u').value,password:$('#pw').value,...(setup?{setup_key:$('#sk').value}:{})}});token=d.token;role=d.role;localStorage.setItem('tc_token',token);localStorage.setItem('tc_role',role);viewAdmin()},e.target.closest('.card'))}
 async function load(){
   document.querySelectorAll('[data-n]').forEach(a=>a.classList.toggle('on',a.dataset.n===cur));
   const m=$('#mn');m.innerHTML=`<div class="bar"><div class="row"><button class="btn sec menu" id="mb" aria-label="Menu">☰</button><h1>${cur}</h1></div><div id="act" class="row"></div></div><div id="c"><p class="muted">Loading…</p></div>`;
   $('#mb').onclick=()=>toggleSide();
   try{await({Dashboard:dash,Reports:reports,Settings:settings}[cur]||list)()}catch(e){$('#c').innerHTML=`<div class="err">${esc(e.message)}<br><br><button class="btn sec" onclick="load()">Retry</button></div>`}}
 async function dash(){const s=await api('/dashboard/stats');const c=[['Total customers',s.total_customers],['Active customers',s.active_customers],["Today's revenue",UGX(s.revenue_today)],['Total revenue',UGX(s.revenue_total)],['Active sessions',s.active_sessions],['Pending payments',s.pending_payments]];
+  if(role==='SuperAdmin')c.push(['Withdrawals awaiting you',s.pending_withdrawals]);
   $('#c').innerHTML=`<div class="stats">${c.map((x,i)=>`<div class="card${i==2?' key':''}"><span class="muted">${x[0]}</span><b>${x[1]}</b></div>`).join('')}</div>`}
 async function reports(){const r=await api('/reports'),pc=r.payment_counts,mx=Math.max(1,...Object.values(pc));
   $('#c').innerHTML=`<div class="stats">${[['Revenue today',UGX(r.revenue_today)],['Revenue this week',UGX(r.revenue_week)],['Revenue this month',UGX(r.revenue_month)],['Total revenue',UGX(r.revenue_total)],['Customers',r.customers],['Purchases',r.purchases],['Most purchased package',esc(r.top_package||'—')]].map(x=>`<div class="card"><span class="muted">${x[0]}</span><b>${x[1]}</b></div>`).join('')}</div>
   <div class="card bars" style="margin-top:1rem"><h3>Payments by status</h3>${Object.keys(pc).length?Object.entries(pc).map(([k,v])=>`${badge(k)} ${v}<div style="width:${v/mx*100}%"></div>`).join(''):'<p class="muted">No payments yet.</p>'}</div>`}
 async function settings(){const s=await api('/settings/status'),y=v=>v?'Yes':'No';
   $('#c').innerHTML=`<div class="card"><dl class="kv"><dt>Pesapal environment</dt><dd>${esc(s.pesapal_environment)}</dd><dt>Credentials accepted</dt><dd>${y(s.pesapal_credentials_ok)}</dd><dt>IPN registered</dt><dd>${y(s.ipn_registered)}</dd><dt>Callback URL</dt><dd>${esc(s.callback_url)}</dd><dt>IPN URL</dt><dd>${esc(s.ipn_url)}</dd><dt>Router access</dt><dd>Not connected: paid sessions are recorded here but the router is not updated automatically.</dd></dl></div>`}
+let wBalance=null;
 async function list(){const S=SEC[cur];rows=await api(S.url);
+  wBalance=S.balance?await api(S.balance).catch(()=>null):null;
   $('#act').innerHTML=`<input id="q" placeholder="Search…" style="width:200px" aria-label="Search">${S.filter?`<select id="f" style="width:auto" aria-label="Filter"><option value="">All statuses</option>${S.filter.map(x=>`<option>${x}</option>`).join('')}</select>`:''}${S.form?`<button class="btn" id="add">Add ${cur.slice(0,-1).toLowerCase()}</button>`:''}`;
-  $('#q').oninput=draw;if(S.filter)$('#f').onchange=draw;if(S.form)$('#add').onclick=()=>edit();draw()}
+  $('#q').oninput=draw;if(S.filter)$('#f').onchange=draw;if(S.form)$('#add').onclick=()=>edit();draw();
+  if(cur==='Withdrawals')refreshBadge()}
 function draw(){const S=SEC[cur],q=($('#q')?.value||'').toLowerCase(),f=$('#f')?.value||'';
   const v=rows.filter(r=>(!f||r.status===f)&&(!q||JSON.stringify(Object.values(r)).toLowerCase().includes(q)));
-  if(!v.length){$('#c').innerHTML=`<div class="card empty">${rows.length?'No results match your search.':'Nothing here yet.'+(S.form?' Use the Add button to create the first one.':'')}</div>`;return}
-  $('#c').innerHTML=`<div class="card tw" style="padding:0"><table><thead><tr>${S.cols.map(c=>`<th>${c[1]}</th>`).join('')}<th></th></tr></thead><tbody>${v.map(r=>`<tr data-id="${r.id}">${S.cols.map(c=>`<td>${c[2]?c[2](r[c[0]]):esc(r[c[0]]??'—')}</td>`).join('')}<td class="row">${S.view?'<button class="btn sm sec" data-act="view">View</button>':''}${S.form?'<button class="btn sm sec" data-act="edit">Edit</button>':''}${S.del?`<button class="btn sm sec" data-act="del">${S.del}</button>`:''}${S.extra?S.extra(r):''}</td></tr>`).join('')}</tbody></table></div>`;
+  const sum=wBalance?`<div class="stats" style="margin-bottom:1rem"><div class="card key"><span class="muted">Available balance</span><b>${UGX(wBalance.available)}</b></div><div class="card"><span class="muted">Total revenue</span><b>${UGX(wBalance.revenue)}</b></div><div class="card"><span class="muted">Already disbursed</span><b>${UGX(wBalance.paid)}</b></div><div class="card"><span class="muted">Pending requests</span><b>${UGX(wBalance.pending)}</b></div></div>`:'';
+  if(!v.length){$('#c').innerHTML=sum+`<div class="card empty">${rows.length?'No results match your search.':'Nothing here yet.'+(S.form?' Use the Add button to create the first one.':'')}</div>`;return}
+  $('#c').innerHTML=sum+`<div class="card tw" style="padding:0"><table><thead><tr>${S.cols.map(c=>`<th>${c[1]}</th>`).join('')}<th></th></tr></thead><tbody>${v.map(r=>`<tr data-id="${r.id}">${S.cols.map(c=>`<td>${c[2]?c[2](r[c[0]]):esc(r[c[0]]??'—')}</td>`).join('')}<td class="row">${S.view?'<button class="btn sm sec" data-act="view">View</button>':''}${S.form&&!S.addOnly?'<button class="btn sm sec" data-act="edit">Edit</button>':''}${S.del?`<button class="btn sm sec" data-act="del">${S.del}</button>`:''}${S.extra?S.extra(r):''}</td></tr>`).join('')}</tbody></table></div>`;
   document.querySelectorAll('[data-act]').forEach(b=>b.onclick=()=>act(b.dataset.act,rows.find(r=>r.id==b.closest('tr').dataset.id)))}
 function modal(html){const m=document.createElement('div');m.className='modal';m.innerHTML=`<div class="card" role="dialog" aria-modal="true">${html}</div>`;m.onclick=e=>{if(e.target===m)m.remove()};document.body.append(m);return m}
 function confirmBox(text,label,fn){const m=modal(`<p>${esc(text)}</p><div class="row"><button class="btn bad" id="y">${label}</button><button class="btn sec" id="n">Cancel</button></div>`);$('#n',m).onclick=()=>m.remove();$('#y',m).onclick=e=>busy(e.target,async()=>{await fn();m.remove()},m)}
@@ -221,11 +243,17 @@ function edit(r){const S=SEC[cur],id=r?.id;
   $('#cx',m).onclick=()=>m.remove();
   $('#sv',m).onclick=e=>busy(e.target,async()=>{const b={};S.form.forEach(([k,,t])=>{const el=$('#f_'+k,m);b[k]=t==='check'?el.checked:t==='number'?+el.value:el.value});
     await api(S.url+(id?'/'+id:''),{method:id?'PUT':'POST',body:b});m.remove();toast('Saved.');list()},m)}
+function promptReject(r){
+  const m=modal(`<h2>Reject withdrawal</h2><p class="muted" style="margin-top:-.3rem">${UGX(r.amount)} requested by ${esc(r.admin_username)}</p><label for="rr">Reason (optional, shown to the requester)</label><textarea id="rr" rows="3"></textarea><p class="row"><button class="btn bad" id="rj">Reject</button><button class="btn sec" id="rc">Cancel</button></p>`);
+  $('#rc',m).onclick=()=>m.remove();
+  $('#rj',m).onclick=e=>busy(e.target,async()=>{await api('/withdrawals/'+r.id+'/reject',{method:'POST',body:{reason:$('#rr',m).value}});m.remove();toast('Withdrawal rejected.');list()},m)}
 async function act(a,r){const S=SEC[cur];
   if(a==='edit')return edit(r);
-  if(a==='del')return confirmBox(`${S.del} "${r.full_name||r.name}"?`,S.del,async()=>{const d=await api(S.url+'/'+r.id,{method:'DELETE'});toast(d.deactivated?'Package is in use, so it was deactivated instead.':'Done.');list()});
+  if(a==='del')return confirmBox(`${S.del} "${r.full_name||r.name||r.username}"?`,S.del,async()=>{const d=await api(S.url+'/'+r.id,{method:'DELETE'});toast(d.deactivated?'Package is in use, so it was deactivated instead.':'Done.');list()});
   if(a==='cash')return confirmBox(`Confirm cash received for order ${r.order_ref}? This activates the customer's package.`,'Confirm',async()=>{await api('/payments/'+r.id+'/confirm-cash',{method:'POST'});toast('Payment confirmed and session created.');list()});
   if(a==='term')return confirmBox('Terminate this session? The customer loses access immediately.','Terminate',async()=>{await api('/sessions/'+r.id+'/terminate',{method:'POST'});toast('Session terminated.');list()});
+  if(a==='wapprove')return confirmBox(`Approve and disburse ${UGX(r.amount)} to ${r.admin_username} via ${r.method}${r.destination?' ('+r.destination+')':''}? Only confirm once you have actually paid them.`,'Approve',async()=>{await api('/withdrawals/'+r.id+'/approve',{method:'POST'});toast('Withdrawal approved and marked as paid.');list()});
+  if(a==='wreject')return promptReject(r);
   if(a==='view'){const c=await api('/customers/'+r.id).catch(e=>toast(e.message,true));if(!c)return;const s=c.current_session,l=c.last_payment;
     const m=modal(`<h2>${esc(c.full_name)} ${badge(c.status)}</h2><h3>Profile</h3><dl class="kv"><dt>Phone</dt><dd>${esc(c.phone)}</dd><dt>Email</dt><dd>${esc(c.email||'—')}</dd><dt>Registered</dt><dd>${fmt(c.created_at)}</dd><dt>Package</dt><dd>${esc(c.current_package||'—')}</dd><dt>Expiry</dt><dd>${fmt(c.package_expiry)}</dd></dl>
     <h3 style="margin-top:1rem">Statistics</h3><dl class="kv"><dt>Purchases</dt><dd>${c.purchases}</dd><dt>Total spent</dt><dd>${UGX(c.total_spent)}</dd><dt>Current session</dt><dd>${s?esc(s.package)+' until '+fmt(s.expires_at):'None'}</dd><dt>Last payment</dt><dd>${l?UGX(l.amount)+' on '+fmt(l.paid_at):'—'}</dd></dl>
